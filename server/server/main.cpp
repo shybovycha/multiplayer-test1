@@ -170,12 +170,14 @@ void clientHandler(sf::TcpSocket* socket)
 
 int main()
 {
-    unsigned short port = 9501;
+    unsigned short port = 19501;
 
     sf::TcpListener listener;
 
     if (listener.listen(port) != sf::Socket::Done)
         return 0;
+
+    listener.setBlocking(false);
 
     qDebug() << QString("Server is listening to port %1, waiting for connections...").arg(port);
 

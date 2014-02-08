@@ -287,7 +287,7 @@ int main()
 {
     // Ask for the server address
     sf::IpAddress server = "192.168.1.237";
-    unsigned short port = 9501;
+    unsigned short port = 19501;
 
     // Create a socket for communicating with the server
     sf::TcpSocket socket;
