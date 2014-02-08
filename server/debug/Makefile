@@ -12,13 +12,13 @@ MAKEFILE      = Makefile
 
 CC            = gcc
 CXX           = g++
-DEFINES       = -DQT_QML_DEBUG -DQT_DECLARATIVE_DEBUG
-CFLAGS        = -pipe -g -Wall -W -fPIE $(DEFINES)
-CXXFLAGS      = -pipe -g -Wall -W -fPIE $(DEFINES)
-INCPATH       = -I/opt/Qt/5.2.0/gcc_64/mkspecs/linux-g++ -I../server -I.
+DEFINES       = -DQT_GUI_LIB -DQT_CORE_LIB -DQT_QML_DEBUG -DQT_DECLARATIVE_DEBUG
+CFLAGS        = -pipe -g -D_REENTRANT -Wall -W -fPIE $(DEFINES)
+CXXFLAGS      = -pipe -g -D_REENTRANT -Wall -W -fPIE $(DEFINES)
+INCPATH       = -I/opt/Qt/5.2.0/gcc_64/mkspecs/linux-g++ -I../server -I/opt/Qt/5.2.0/gcc_64/include -I/opt/Qt/5.2.0/gcc_64/include/QtGui -I/opt/Qt/5.2.0/gcc_64/include/QtCore -I. -I.
 LINK          = g++
-LFLAGS        = -Wl,-rpath,/opt/Qt/5.2.0/gcc_64
-LIBS          = $(SUBLIBS) -lsfml-network -lsfml-system 
+LFLAGS        = -Wl,-rpath,/opt/Qt/5.2.0/gcc_64 -Wl,-rpath,/opt/Qt/5.2.0/gcc_64/lib
+LIBS          = $(SUBLIBS) -lsfml-network -lsfml-system -L/opt/Qt/5.2.0/gcc_64/lib -lQt5Gui -lQt5Core -lGL -lpthread 
 AR            = ar cqs
 RANLIB        = 
 QMAKE         = /opt/Qt/5.2.0/gcc_64/bin/qmake
@@ -137,6 +137,11 @@ DIST          = /opt/Qt/5.2.0/gcc_64/mkspecs/features/spec_pre.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/default_pre.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/resolve_config.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/default_post.prf \
+		/opt/Qt/5.2.0/gcc_64/mkspecs/features/qt.prf \
+		/opt/Qt/5.2.0/gcc_64/mkspecs/features/resources.prf \
+		/opt/Qt/5.2.0/gcc_64/mkspecs/features/moc.prf \
+		/opt/Qt/5.2.0/gcc_64/mkspecs/features/unix/opengl.prf \
+		/opt/Qt/5.2.0/gcc_64/mkspecs/features/unix/thread.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/qml_debug.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/declarative_debug.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/unix/gdb_dwarf_index.prf \
@@ -270,6 +275,11 @@ Makefile: ../server/server.pro /opt/Qt/5.2.0/gcc_64/mkspecs/linux-g++/qmake.conf
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/default_pre.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/resolve_config.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/default_post.prf \
+		/opt/Qt/5.2.0/gcc_64/mkspecs/features/qt.prf \
+		/opt/Qt/5.2.0/gcc_64/mkspecs/features/resources.prf \
+		/opt/Qt/5.2.0/gcc_64/mkspecs/features/moc.prf \
+		/opt/Qt/5.2.0/gcc_64/mkspecs/features/unix/opengl.prf \
+		/opt/Qt/5.2.0/gcc_64/mkspecs/features/unix/thread.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/qml_debug.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/declarative_debug.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/unix/gdb_dwarf_index.prf \
@@ -278,7 +288,9 @@ Makefile: ../server/server.pro /opt/Qt/5.2.0/gcc_64/mkspecs/linux-g++/qmake.conf
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/exceptions.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/yacc.prf \
 		/opt/Qt/5.2.0/gcc_64/mkspecs/features/lex.prf \
-		../server/server.pro
+		../server/server.pro \
+		/opt/Qt/5.2.0/gcc_64/lib/libQt5Gui.prl \
+		/opt/Qt/5.2.0/gcc_64/lib/libQt5Core.prl
 	$(QMAKE) -spec linux-g++ CONFIG+=debug CONFIG+=declarative_debug CONFIG+=qml_debug -o Makefile ../server/server.pro
 /opt/Qt/5.2.0/gcc_64/mkspecs/features/spec_pre.prf:
 /opt/Qt/5.2.0/gcc_64/mkspecs/common/shell-unix.conf:
@@ -370,6 +382,11 @@ Makefile: ../server/server.pro /opt/Qt/5.2.0/gcc_64/mkspecs/linux-g++/qmake.conf
 /opt/Qt/5.2.0/gcc_64/mkspecs/features/default_pre.prf:
 /opt/Qt/5.2.0/gcc_64/mkspecs/features/resolve_config.prf:
 /opt/Qt/5.2.0/gcc_64/mkspecs/features/default_post.prf:
+/opt/Qt/5.2.0/gcc_64/mkspecs/features/qt.prf:
+/opt/Qt/5.2.0/gcc_64/mkspecs/features/resources.prf:
+/opt/Qt/5.2.0/gcc_64/mkspecs/features/moc.prf:
+/opt/Qt/5.2.0/gcc_64/mkspecs/features/unix/opengl.prf:
+/opt/Qt/5.2.0/gcc_64/mkspecs/features/unix/thread.prf:
 /opt/Qt/5.2.0/gcc_64/mkspecs/features/qml_debug.prf:
 /opt/Qt/5.2.0/gcc_64/mkspecs/features/declarative_debug.prf:
 /opt/Qt/5.2.0/gcc_64/mkspecs/features/unix/gdb_dwarf_index.prf:
@@ -379,6 +396,8 @@ Makefile: ../server/server.pro /opt/Qt/5.2.0/gcc_64/mkspecs/linux-g++/qmake.conf
 /opt/Qt/5.2.0/gcc_64/mkspecs/features/yacc.prf:
 /opt/Qt/5.2.0/gcc_64/mkspecs/features/lex.prf:
 ../server/server.pro:
+/opt/Qt/5.2.0/gcc_64/lib/libQt5Gui.prl:
+/opt/Qt/5.2.0/gcc_64/lib/libQt5Core.prl:
 qmake: FORCE
 	@$(QMAKE) -spec linux-g++ CONFIG+=debug CONFIG+=declarative_debug CONFIG+=qml_debug -o Makefile ../server/server.pro
 
@@ -386,7 +405,7 @@ qmake_all: FORCE
 
 dist: 
 	@test -d .tmp/server1.0.0 || mkdir -p .tmp/server1.0.0
-	$(COPY_FILE) --parents $(SOURCES) $(DIST) .tmp/server1.0.0/ && (cd `dirname .tmp/server1.0.0` && $(TAR) server1.0.0.tar server1.0.0 && $(COMPRESS) server1.0.0.tar) && $(MOVE) `dirname .tmp/server1.0.0`/server1.0.0.tar.gz . && $(DEL_FILE) -r .tmp/server1.0.0
+	$(COPY_FILE) --parents $(SOURCES) $(DIST) .tmp/server1.0.0/ && $(COPY_FILE) --parents ../server/main.cpp .tmp/server1.0.0/ && (cd `dirname .tmp/server1.0.0` && $(TAR) server1.0.0.tar server1.0.0 && $(COMPRESS) server1.0.0.tar) && $(MOVE) `dirname .tmp/server1.0.0`/server1.0.0.tar.gz . && $(DEL_FILE) -r .tmp/server1.0.0
 
 
 clean:compiler_clean 
@@ -401,8 +420,18 @@ distclean: clean
 	-$(DEL_FILE) Makefile
 
 
+mocclean: compiler_moc_header_clean compiler_moc_source_clean
+
+mocables: compiler_moc_header_make_all compiler_moc_source_make_all
+
 check: first
 
+compiler_rcc_make_all:
+compiler_rcc_clean:
+compiler_moc_header_make_all:
+compiler_moc_header_clean:
+compiler_moc_source_make_all:
+compiler_moc_source_clean:
 compiler_yacc_decl_make_all:
 compiler_yacc_decl_clean:
 compiler_yacc_impl_make_all:
@@ -413,7 +442,83 @@ compiler_clean:
 
 ####### Compile
 
-main.o: ../server/main.cpp 
+main.o: ../server/main.cpp /opt/Qt/5.2.0/gcc_64/include/QtCore/QDebug \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qdebug.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qalgorithms.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qglobal.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qconfig.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qfeatures.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qsystemdetection.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qprocessordetection.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qcompilerdetection.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qglobalstatic.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qbasicatomic.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_bootstrap.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qgenericatomic.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_msvc.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_integrity.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qoldbasicatomic.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_vxworks.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_power.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_alpha.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_armv7.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_armv6.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_armv5.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_bfin.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_ia64.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_mips.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_s390.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_sh4a.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_sparc.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_x86.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_cxx11.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_gcc.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qatomic_unix.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qmutex.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qlogging.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qflags.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qtypeinfo.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qtypetraits.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qsysinfo.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qhash.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qchar.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qiterator.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qlist.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qrefcount.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qpair.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qmap.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qtextstream.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qiodevice.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qobject.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qobjectdefs.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qnamespace.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qobjectdefs_impl.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qstring.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qbytearray.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qarraydata.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qstringbuilder.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qcoreevent.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qscopedpointer.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qmetatype.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qvarlengtharray.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qcontainerfwd.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qisenum.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qobject_impl.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qlocale.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qvariant.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qstringlist.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qdatastream.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qregexp.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qstringmatcher.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qshareddata.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qvector.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qpoint.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qset.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/qcontiguouscache.h \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/QString \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/QRegExp \
+		/opt/Qt/5.2.0/gcc_64/include/QtCore/QMap
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o ../server/main.cpp
 
 ####### Install

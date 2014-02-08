@@ -78,9 +78,24 @@ QString receiveData(sf::TcpSocket *socket)
     std::size_t received;
 
     if (socket->receive(in, sizeof(in), received) != sf::Socket::Done)
-        return QString();
+        return QString("SHUTDOWN");
 
     return QString(in);
+}
+
+sf::Socket::Status sendData(sf::TcpSocket *socket, QString message)
+{
+    const char* data = message.toStdString().c_str();
+
+    return socket->send(data, message.size() * sizeof(char));
+}
+
+sf::Socket::Status sendMainPlayerString(sf::TcpSocket *socket)
+{
+    // Send player data to the server
+    QString out = QString("[%1];%2;%3.").arg(players.firstKey()).arg(players.first()->getPosition().x).arg(players.first()->getPosition().y);
+
+    return sendData(socket, out);
 }
 
 void clearPlayers()
@@ -114,10 +129,26 @@ void updatePlayerPos(QString name, const sf::Vector2f &position)
     players[name]->setPosition(position);
 }
 
+void parsePlayerString(const QString &string, QString *playerName, sf::Vector2f *pos)
+{
+    QRegExp playerRe("\\[([^]]+)\\];(\\d+\\.?\\d*);(\\d+\\.?\\d*)\\.");
+
+    if (playerRe.indexIn(string) < 0)
+    {
+        qDebug() << QString("`%1` is a bad player string").arg(string);
+        return;
+    }
+
+    float x = playerRe.cap(2).toFloat(), y = playerRe.cap(3).toFloat();
+
+    *playerName = playerRe.cap(1);
+    *pos = sf::Vector2f(x, y);
+}
+
 void parsePlayerList(const QString &string)
 {
-    QRegExp listRe("(\\d+);(\\[(.+)\\];(\\d+\\.\\d+);(\\d+\\.\\d+))+");
-    QRegExp playerRe("\\[(.+)\\];(\\d+\\.\\d+);(\\d+\\.\\d+)");
+    QRegExp listRe("(\\d+).(\\[([^]]+)\\];(\\d+\\.?\\d*);(\\d+\\.?\\d*)\\.)+");
+    QRegExp playerRe("\\[([^]]+)\\];(\\d+\\.?\\d*);(\\d+\\.?\\d*)\\.");
 
     if (listRe.indexIn(string) < 0)
     {
@@ -131,58 +162,74 @@ void parsePlayerList(const QString &string)
 
     clearPlayers();
 
-    QStringList playerStrings = listRe.cap(2).split(playerRe);
+    // QStringList playerStrings = listRe.cap(2).split(playerRe);
 
-    for (int i = 0; i < playerStrings.size(); i++)
+    // for (int i = 0; i < playerStrings.size(); i++)
+    QString listString = listRe.cap(2);
+    int prevMatchPos = -1;
+
+    while ((prevMatchPos = playerRe.indexIn(listString, prevMatchPos)) > -1)
     {
-        if (playerRe.indexIn(playerStrings.at(i)) < 0)
-        {
-            qDebug() << QString("`%1` is an invalid player string").arg(playerStrings.at(i));
-            continue;
-        }
+        QString name;
+        sf::Vector2f pos;
 
-        QString name = playerRe.cap(1);
-        float x = playerRe.cap(2).toFloat(), y = playerRe.cap(3).toFloat();
+        parsePlayerString(playerRe.cap(0), &name, &pos);
 
-        createPlayer(name, sf::Vector2f(x, y));
+        createPlayer(name, pos);
     }
 
     qDebug() << QString("Loaded %1 players").arg(players.size());
 }
 
-void parsePlayerString(const QString &string)
+void parseUpdatePlayerString(const QString &string)
 {
-    QRegExp playerRe("\\[(.+)\\];(\\d+\\.\\d+);(\\d+\\.\\d+)");
+    QString name;
+    sf::Vector2f pos;
 
-    if (playerRe.indexIn(string) < 0)
-    {
-        qDebug() << QString("`%1` is a bad player string\n").arg(string);
-        return;
-    }
+    parsePlayerString(string, &name, &pos);
 
-    QString name = playerRe.cap(1);
-    int x = playerRe.cap(2).toFloat(), y = playerRe.cap(3).toFloat();
-
-    updatePlayerPos(name, sf::Vector2f(x, y));
+    updatePlayerPos(name, pos);
 }
 
-sf::Socket::Status sendMainPlayerString(sf::TcpSocket *socket)
+void createMainPlayer(const QString &name)
 {
-    // Send player data to the server
-    QString out = QString("[%1];%2;%3").arg(players.firstKey()).arg(players.first()->getPosition().x).arg(players.first()->getPosition().y);
+    players.clear();
 
-    return socket->send(out.toUtf8().data(), sizeof(out));
+    Player *player = new Player();
+    players[name] = player;
 }
 
 sf::Socket::Status sendIntroductionMessage(sf::TcpSocket *socket)
 {
-    // Send player data to the server
-    QString out = QString("<player-%1>").arg(rand() % 255);
+    QString name = QString("player-%1").arg(rand() % 255);
 
-    return socket->send(out.toUtf8().data(), sizeof(out));
+    createMainPlayer(name);
+
+    // Send player data to the server
+    QString out = QString("<%1>").arg(name);
+
+    return sendData(socket, out);
 }
 
-void clientHandler(sf::TcpSocket *socket)
+
+void sendingFunc(sf::TcpSocket *socket)
+{
+    sf::Clock delayTimer;
+
+    while (true)
+    {
+        if (delayTimer.getElapsedTime().asSeconds() < PLAYER_UPDATE_DELAY)
+            continue;
+
+        if (sendMainPlayerString(socket) != sf::Socket::Done)
+        {
+            qDebug() << QString("Server has gone away...");
+            return;
+        }
+    }
+}
+
+void receivingFunc(sf::TcpSocket *socket)
 {
     // send welcome message
     if (sendIntroductionMessage(socket) != sf::Socket::Done)
@@ -195,25 +242,45 @@ void clientHandler(sf::TcpSocket *socket)
     QString playerList = receiveData(socket);
     parsePlayerList(playerList);
 
-    sf::Clock delayTimer;
+    sf::Thread sendingThread(&sendingFunc, socket);
+
+    sendingThread.launch();
 
     while (true)
     {
-        if (delayTimer.getElapsedTime().asSeconds() < PLAYER_UPDATE_DELAY)
-            continue;
-
         // parse player data from server
         QString playerString = receiveData(socket);
-        parsePlayerString(playerString);
 
-        qDebug() << QString("Message received from the server: `%1`").arg(playerString);
-
-        if (sendMainPlayerString(socket) != sf::Socket::Done)
+        if (playerString == "SHUTDOWN")
         {
-            qDebug() << QString("Server has gone away...");
+            qDebug() << QString("Server has gone away.");
+            sendingThread.terminate();
             return;
         }
+
+        parseUpdatePlayerString(playerString);
+
+        // qDebug() << QString("Message received from the server: `%1`").arg(playerString);
     }
+}
+
+void handleUserInput()
+{
+    sf::Vector2f pos = players.first()->getPosition();
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+        pos += sf::Vector2f(0, -1);
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
+        pos += sf::Vector2f(0, 1);
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+        pos += sf::Vector2f(-1, 0);
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+        pos += sf::Vector2f(1, 0);
+
+    players.first()->setPosition(pos);
 }
 
 int main()
@@ -234,9 +301,9 @@ int main()
     // create the window
     sf::RenderWindow window(sf::VideoMode(800, 600), "Multiplayer Client");
 
-    sf::Thread clientThread(&clientHandler, &socket);
+    sf::Thread receivingThread(&receivingFunc, &socket);
 
-    clientThread.launch();
+    receivingThread.launch();
 
     while (window.isOpen())
     {
@@ -257,7 +324,8 @@ int main()
         {
             Player *player = players.values().at(i);
 
-            player->update();
+            if (i > 0)
+                player->update();
 
             sf::CircleShape shape(10.0);
 
@@ -266,8 +334,10 @@ int main()
             shape.setOutlineColor(sf::Color(50, 200, 25));
             shape.setPosition(player->getPosition());
 
-            // players.values().at(i)->draw();
+            window.draw(shape);
         }
+
+        handleUserInput();
 
         // end the current frame
         window.display();
