@@ -8,190 +8,155 @@
 #include <SFML/System.hpp>
 #include <SFML/Network.hpp>
 
-class Player
+#define PING_TIMEOUT 10
+
+struct Player
+{
+    sf::IpAddress ip;
+    unsigned short port;
+    sf::Clock updateTimer;
+};
+
+class ServerApplication
 {
 public:
-    Player(sf::TcpSocket *socket) : socket(socket), position(sf::Vector2f(0, 0))
+    ServerApplication(unsigned short serverPort)
     {
+        this->serverPort = serverPort;
+        this->socket = new sf::UdpSocket();
+        this->socket->bind(serverPort);
+        this->socket->setBlocking(false);
     }
 
-    Player(sf::TcpSocket *socket, const sf::Vector2f &position) : socket(socket), position(position)
+    QString findPlayerByPeer(const sf::IpAddress &address, unsigned short port)
     {
+        for (int i = 0; i < players.size(); i++)
+        {
+            Player *player = players.values().at(i);
+
+            if ((player->ip.toInteger() == address.toInteger()) && (player->port == port))
+                return players.keys().at(i);
+        }
+
+        return QString("");
     }
 
-    sf::Vector2f getPosition()
+    void broadcastMessage(const std::string &sender, sf::Packet &packet)
     {
-        return position;
+        for (int i = 0; i < players.size(); i++)
+        {
+            Player *player = players.values().at(i);
+
+            if (players.keys().at(i).toStdString() == sender)
+                continue;
+
+            socket->send(packet, player->ip, player->port);
+        }
     }
 
-    sf::TcpSocket* getSocket()
+    void sendDieMessage(const std::string &name)
     {
-        return socket;
+        sf::Packet packet;
+        packet << name << "die";
+        broadcastMessage(name, packet);
     }
 
-    void setPosition(const sf::Vector2f &position)
+    void sendAtMessage(const std::string &name, float x, float y)
     {
-        this->position = position;
+        sf::Packet packet;
+        packet << name << "at" << x << y;
+        broadcastMessage(name, packet);
+    }
+
+    void updateSleepingPeers()
+    {
+        sf::Packet packet;
+
+        packet << "server" << "ping";
+
+        for (int i = 0; i < players.size(); i++)
+        {
+            Player *player = players.values().at(i);
+
+            if (player->updateTimer.getElapsedTime().asSeconds() > PING_TIMEOUT)
+            {
+                socket->send(packet, player->ip, player->port);
+            }
+        }
+    }
+
+    void mainFunc()
+    {
+        while (true)
+        {
+            sf::IpAddress senderIp;
+            unsigned short senderPort;
+            sf::Packet packet;
+
+            sf::Socket::Status status = socket->receive(packet, senderIp, senderPort);
+
+            QString existingName = findPlayerByPeer(senderIp, senderPort);
+
+            if (status != sf::Socket::Done)
+            {
+                /*qDebug() << QString("%1:%2 died").arg(senderIp.toString().c_str()).arg(senderPort);
+
+                if (existingName.isEmpty())
+                    continue;
+
+                players.remove(existingName);
+
+                sendDieMessage(existingName.toStdString());*/
+
+                continue;
+            }
+
+            std::string senderName, command;
+
+            packet >> senderName >> command;
+
+            if (existingName.isEmpty())
+            {
+                Player *player = new Player();
+                player->ip = senderIp;
+                player->port = senderPort;
+
+                existingName = QString(senderName.c_str());
+
+                players[existingName] = player;
+
+                qDebug() << QString("%1 joined").arg(existingName);
+            }
+
+            qDebug() << QString("%1:%2 says: %3.%4").arg(senderIp.toString().c_str()).arg(senderPort).arg(senderName.c_str()).arg(command.c_str());
+
+            if (command == "at")
+            {
+                float x, y;
+
+                packet >> x >> y;
+
+                sendAtMessage(senderName, x, y);
+            }
+
+//            sf::Thread updatePeersThread(&ServerApplication::updateSleepingPeers, this);
+//            updatePeersThread.launch();
+        }
     }
 
 protected:
-    sf::TcpSocket* socket;
-    sf::Vector2f position;
+    QMap<QString, Player*> players;
+    unsigned short serverPort;
+    sf::UdpSocket *socket;
 };
-
-QMap<QString, Player*> players;
-
-QString receiveData(sf::TcpSocket *socket)
-{
-    char in[1000];
-    std::size_t received;
-
-    if (socket->receive(in, sizeof(in), received) != sf::Socket::Done)
-        return QString();
-
-    return QString(in);
-}
-
-sf::Socket::Status sendMessage(sf::TcpSocket *socket, QString message)
-{
-    return socket->send(message.toUtf8().data(), message.toUtf8().size());
-}
-
-QString parseIntroductionMessage(const QString &message)
-{
-    QRegExp introductionRe("<(.+)>");
-
-    if (introductionRe.indexIn(message) < 0)
-    {
-        qDebug() << QString("`%1` is a bad introduction").arg(message);
-        return QString("");
-    }
-
-    QString playerName = introductionRe.cap(1);
-
-    // check if this socket is handling already
-    if (players.find(playerName) != players.end())
-    {
-        qDebug() << QString("Name `%1` has been already taken").arg(playerName);
-        return QString("");
-    }
-
-    return playerName;
-}
-
-bool sendPlayersState(sf::TcpSocket* socket)
-{
-    QString msg = QString("%1.").arg(players.size());
-
-    for (int i = 0; i < players.size(); i++)
-    {
-        QString name = players.keys().at(i);
-        Player *player = players.values().at(i);
-        msg += QString("[%1];%2;%3.").arg(name).arg(player->getPosition().x).arg(player->getPosition().y);
-    }
-
-    return (sendMessage(socket, msg) == sf::Socket::Done);
-}
-
-void broadcastMessage(const QString &message, const QString &senderName)
-{
-    for (int i = 0; i < players.size(); i++)
-    {
-        if (players.keys().at(i) == senderName)
-            continue;
-
-        sendMessage(players.values().at(i)->getSocket(), message);
-    }
-}
-
-bool parseUpdateMessage(const QString &message)
-{
-    QRegExp playerRe("\\[([^]]+)\\];(\\d+\\.?\\d*);(\\d+\\.?\\d*).");
-
-    if (playerRe.indexIn(message) < 0)
-    {
-        qDebug() << QString("`%1` is not a valid update message").arg(message);
-        return false;
-    }
-
-    QString playerName = playerRe.cap(1);
-    float x = playerRe.cap(2).toFloat(), y = playerRe.cap(3).toFloat();
-
-    if (players.find(playerName) == players.end())
-    {
-        qDebug() << QString("Received message from ghost! %1 says `%2`").arg(playerName).arg(message);
-        return false;
-    }
-
-    players[playerName]->setPosition(sf::Vector2f(x, y));
-
-    broadcastMessage(message, playerName);
-
-    return true;
-}
-
-void clientHandler(sf::TcpSocket* socket)
-{
-    QString address = socket->getRemoteAddress().toString().c_str();
-    QString introductionMessage = receiveData(socket);
-    QString playerName = parseIntroductionMessage(introductionMessage);
-
-    if (playerName.isEmpty())
-        return;
-
-    Player *player = new Player(socket);
-    players[playerName] = player;
-
-    if (!sendPlayersState(socket))
-    {
-        qDebug() << QString("Could not contact client. Shutting him down");
-        return;
-    }
-
-    qDebug() << QString("Client connected: %1 (%2)").arg(playerName).arg(address);
-
-    while (true)
-    {
-        QString message = receiveData(socket);
-
-        if (message.isEmpty())
-        {
-            qDebug() << QString("%1 has left").arg(playerName);
-            return;
-        }
-
-        if (!parseUpdateMessage(message))
-        {
-            qDebug() << QString("Received an invalid message from %1 (message: `%2`).").arg(playerName).arg(message);
-            continue;
-        }
-    }
-}
 
 int main()
 {
     unsigned short port = 19501;
 
-    sf::TcpListener listener;
+    ServerApplication app(port);
 
-    if (listener.listen(port) != sf::Socket::Done)
-        return 0;
-
-    listener.setBlocking(false);
-
-    qDebug() << QString("Server is listening to port %1, waiting for connections...").arg(port);
-
-    while (true)
-    {
-        sf::TcpSocket socket;
-
-        if (listener.accept(socket) != sf::Socket::Done)
-            continue;
-
-        sf::Thread thread(&clientHandler, &socket);
-
-        thread.launch();
-    }
+    app.mainFunc();
 
     return 0;
 }
